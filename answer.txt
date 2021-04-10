@@ -1,0 +1,4 @@
+Problem with protocol in Fig 1:
+Client has no idea what message it is supposed to expect from Server, thus there is no way to check that the result is correct.
+Server should encrypt the initial message sent by client with its private key, then send the encrypted message to the client.
+After the client receives the encrypted message and obtained the server's public key, if the decrypted message matches the initial message sent to server, then check succeeded.
