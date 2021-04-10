@@ -3,32 +3,27 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.Socket;
 import java.security.PublicKey;
+import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 
 public class ClientCP1 {
 	final static String verificationMessage = "Encrypt this message and send it back";
+	static DataOutputStream toServer = null;
+	static DataInputStream fromServer = null;
 
 	public static void main(String[] args) throws Exception {
 		PublicKey CAPublicKey = AuthenticationHelper.getCAPublicKey();
 
-		String filename = "100.txt";
-		if (args.length > 0) filename = args[0];
-
 		String serverAddress = "localhost";
-		if (args.length > 1) filename = args[1];
-
 		int port = 4321;
-		if (args.length > 2) port = Integer.parseInt(args[2]);
 
 		int numBytes = 0;
 
 		Socket clientSocket = null;
-
-		DataOutputStream toServer = null;
-		DataInputStream fromServer = null;
 
 		FileInputStream fileInputStream = null;
 		BufferedInputStream bufferedFileInputStream = null;
@@ -45,12 +40,8 @@ public class ClientCP1 {
 			fromServer = new DataInputStream(clientSocket.getInputStream());
 
 			// START AUTHENTICATION
-
-			// send message
 			System.out.println("Sending verification request");
-			toServer.writeInt(3);
-			toServer.writeInt(verificationMessage.length());
-			toServer.write(verificationMessage.getBytes());
+			sendVerificationMessage();
 
 			// read encrypted return message
 			numBytes = fromServer.readInt();
@@ -60,10 +51,8 @@ public class ClientCP1 {
 			// request certificate
 			System.out.println("Requesting certificate");
 			toServer.writeInt(4);
-			numBytes = fromServer.readInt();
-			byte[] serverCertEncoded = new byte[numBytes];
-			fromServer.readFully(serverCertEncoded, 0, numBytes);
-			X509Certificate serverCert = (X509Certificate) CertificateFactory.getInstance("X.509").generateCertificate(new ByteArrayInputStream(serverCertEncoded));
+			toServer.flush();
+			X509Certificate serverCert = getServerCert();
 
 			// validate and verify cert and get server public key
 			System.out.println("Validating and verifying cert");
@@ -72,38 +61,39 @@ public class ClientCP1 {
 
 			// decrypt encryptedReturn and check against verificationMessage
 			String decryptedMessage = RSAEncryptionHelper.decryptServerMessage(encryptedReturn, serverKey);
-			if (!decryptedMessage.equals(verificationMessage)) throw new Exception();
+			if (!decryptedMessage.equals(verificationMessage)) {
+				toServer.writeInt(10);
+				toServer.flush();
+				throw new Exception("Authentication Error");
+			}
 			// AUTHENTICATION COMPLETE
 			System.out.println("Successfully authenticated server!");
 
-			System.out.println("Sending file...");
+			for (int i = 0; i < args.length; i++) {
+				String filename = args[i];
+				System.out.println("Sending file " + filename + " ...");
+				// Send the filename
+				sendFileName(filename);
 
-			// Send the filename
-			toServer.writeInt(0);
-			toServer.writeInt(filename.getBytes().length);
-			toServer.write(filename.getBytes());
+				// Open the file
+				fileInputStream = new FileInputStream(filename);
+				bufferedFileInputStream = new BufferedInputStream(fileInputStream);
 
-			//toServer.flush();
+				byte [] fromFileBuffer = new byte[117];
 
-			// Open the file
-			fileInputStream = new FileInputStream(filename);
-			bufferedFileInputStream = new BufferedInputStream(fileInputStream);
+				// Send the file
+				for (boolean fileEnded = false; !fileEnded;) {
+					numBytes = bufferedFileInputStream.read(fromFileBuffer);
+					fileEnded = numBytes < 117;
 
-			byte [] fromFileBuffer = new byte[117];
-
-			// Send the file
-			for (boolean fileEnded = false; !fileEnded;) {
-				numBytes = bufferedFileInputStream.read(fromFileBuffer);
-				fileEnded = numBytes < 117;
-
-				toServer.writeInt(1);
-				toServer.writeInt(numBytes);
-				toServer.write(fromFileBuffer);
-				toServer.flush();
+					sendFileData(numBytes, fromFileBuffer);
+				}
 			}
+			toServer.writeInt(10);
 
 			bufferedFileInputStream.close();
 			fileInputStream.close();
+
 
 			System.out.println("Closing connection...");
 
@@ -111,5 +101,33 @@ public class ClientCP1 {
 
 		long timeTaken = System.nanoTime() - timeStarted;
 		System.out.println("Program took: " + timeTaken/1000000.0 + "ms to run");
+	}
+
+	static void sendFileData(int numBytes, byte[] fromFileBuffer) throws IOException {
+		toServer.writeInt(1);
+		toServer.writeInt(numBytes);
+		toServer.write(fromFileBuffer, 0, numBytes);
+		toServer.flush();
+	}
+
+	static X509Certificate getServerCert() throws IOException, CertificateException {
+		int numBytes = fromServer.readInt();
+		byte[] serverCertEncoded = new byte[numBytes];
+		fromServer.readFully(serverCertEncoded, 0, numBytes);
+		return (X509Certificate) CertificateFactory.getInstance("X.509").generateCertificate(new ByteArrayInputStream(serverCertEncoded));
+	}
+
+	static void sendFileName(String filename) throws IOException {
+		toServer.writeInt(0);
+		toServer.writeInt(filename.getBytes().length);
+		toServer.write(filename.getBytes(), 0, filename.getBytes().length);
+		toServer.flush();
+	}
+
+	static void sendVerificationMessage() throws IOException {
+		toServer.writeInt(3);
+		toServer.writeInt(verificationMessage.getBytes().length);
+		toServer.write(verificationMessage.getBytes(), 0, verificationMessage.getBytes().length);
+		toServer.flush();
 	}
 }

@@ -5,15 +5,13 @@ import java.io.FileOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.PrivateKey;
-import java.util.Base64;
 
-public class ServerWithAP {
+public class ServerAP {
 
     public static void main(String[] args) throws Exception {
         PrivateKey privateKey = AuthenticationHelper.getServerPrivateKey();
 
         int port = 4321;
-        if (args.length > 0) port = Integer.parseInt(args[0]);
 
         ServerSocket welcomeSocket = null;
         Socket connectionSocket = null;
@@ -33,20 +31,22 @@ public class ServerWithAP {
 
                 int packetType = fromClient.readInt();
 
-                if (packetType == 0) {
+                if (packetType == 0)
+                {
                     // If the packet is for transferring the filename
-                    System.out.println("Receiving file...");
+                    System.out.print("Receiving file ");
 
                     int numBytes = fromClient.readInt();
                     byte[] filename = new byte[numBytes];
                     // Must use read fully!
                     // See: https://stackoverflow.com/questions/25897627/datainputstream-read-vs-datainputstream-readfully
                     fromClient.readFully(filename, 0, numBytes);
-
+                    System.out.println(new String(filename, 0, numBytes));
                     fileOutputStream = new FileOutputStream("recv_" + new String(filename, 0, numBytes));
                     bufferedFileOutputStream = new BufferedOutputStream(fileOutputStream);
-
-                } else if (packetType == 1) {
+                }
+                else if (packetType == 1)
+                {
                     // If the packet is for transferring a chunk of the file
                     int numBytes = fromClient.readInt();
                     byte[] block = new byte[numBytes];
@@ -56,16 +56,14 @@ public class ServerWithAP {
                         bufferedFileOutputStream.write(block, 0, numBytes);
 
                     if (numBytes < 117) {
-                        System.out.println("Closing connection...");
-
-                        if (bufferedFileOutputStream != null) bufferedFileOutputStream.close();
-                        if (bufferedFileOutputStream != null) fileOutputStream.close();
-                        fromClient.close();
-                        toClient.close();
-                        connectionSocket.close();
+                        if (bufferedFileOutputStream != null) {
+                            bufferedFileOutputStream.close();
+                            fileOutputStream.close();
+                        }
                     }
-
-                } else if (packetType == 3) {
+                }
+                else if (packetType == 3)
+                {
                     // packet is initial message in verification protocol
                     int numBytes = fromClient.readInt();
                     byte[] message = new byte[numBytes];
@@ -75,13 +73,23 @@ public class ServerWithAP {
 					byte[] encryptedBytes = RSAEncryptionHelper.serverEncrypt(message, privateKey);
 					toClient.writeInt(encryptedBytes.length);
 					toClient.write(encryptedBytes);
-
-                } else if (packetType == 4) {
+                }
+                else if (packetType == 4)
+                {
                     // send certificate over
                     System.out.println("Sending certificate");
                     byte[] cert = AuthenticationHelper.getServerCert().getEncoded();
                     toClient.writeInt(cert.length);
                     toClient.write(cert);
+
+                }
+                else if (packetType == 10)
+                {
+                    System.out.println("Closing connection...");
+
+                    fromClient.close();
+                    toClient.close();
+                    connectionSocket.close();
                 }
             }
 
