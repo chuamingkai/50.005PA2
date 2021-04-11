@@ -3,6 +3,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.Socket;
 import java.security.PublicKey;
@@ -80,9 +81,13 @@ public class ClientAP {
 				sendFileName(filename);
 
 				// Open the file
-				fileInputStream = new FileInputStream(filename);
-				bufferedFileInputStream = new BufferedInputStream(fileInputStream);
-
+				try {
+					fileInputStream = new FileInputStream(filename);
+					bufferedFileInputStream = new BufferedInputStream(fileInputStream);
+				} catch (FileNotFoundException ex) {
+					System.out.println(filename + " not found");
+					continue;
+				}
 				byte [] fromFileBuffer = new byte[117];
 
 				// Send the file
