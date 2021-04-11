@@ -88,6 +88,7 @@ public class ClientCP2 {
 
 					sendFileData(numBytes, fromFileBuffer);
 				}
+				fromServer.readInt();
 			}
 			toServer.writeInt(10);
 

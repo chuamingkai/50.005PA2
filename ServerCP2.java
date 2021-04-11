@@ -59,6 +59,7 @@ public class ServerCP2 {
 						if (bufferedFileOutputStream != null) {
 							bufferedFileOutputStream.close();
 							fileOutputStream.close();
+							toClient.writeInt(10); // indicate done with file
 						}
 					}
 				}
