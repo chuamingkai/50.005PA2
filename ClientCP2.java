@@ -6,16 +6,20 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Arrays;
 
 public class ClientCP2 {
-	final static String verificationMessage = "Encrypt this message and send it back";
 	static DataOutputStream toServer = null;
 	static DataInputStream fromServer = null;
 
 	public static void main(String[] args) throws Exception {
+		SecureRandom secureRandom = new SecureRandom();
+		byte[] nonce = new byte[8];
+		secureRandom.nextBytes(nonce);
 		PublicKey CAPublicKey = AuthenticationHelper.getCAPublicKey();
 
 		String serverAddress = "localhost";
@@ -41,7 +45,7 @@ public class ClientCP2 {
 
 			// START AUTHENTICATION
 			System.out.println("Sending verification request");
-			sendVerificationMessage();
+			sendVerificationMessage(nonce);
 
 			// read encrypted return message
 			numBytes = fromServer.readInt();
@@ -60,8 +64,8 @@ public class ClientCP2 {
 			PublicKey serverKey = serverCert.getPublicKey();
 
 			// decrypt encryptedReturn and check against verificationMessage
-			String decryptedMessage = new String(RSAEncryptionHelper.decryptMessage(encryptedReturn, serverKey));
-			if (!decryptedMessage.equals(verificationMessage)) {
+			byte[] decryptedMessage = RSAEncryptionHelper.decryptMessage(encryptedReturn, serverKey);
+			if (!Arrays.equals(decryptedMessage, nonce)) {
 				toServer.writeInt(10);
 				toServer.flush();
 				throw new Exception("Authentication Error");
@@ -125,10 +129,10 @@ public class ClientCP2 {
 		toServer.flush();
 	}
 
-	static void sendVerificationMessage() throws IOException {
+	static void sendVerificationMessage(byte[] nonce) throws IOException {
 		toServer.writeInt(3);
-		toServer.writeInt(verificationMessage.getBytes().length);
-		toServer.write(verificationMessage.getBytes(), 0, verificationMessage.getBytes().length);
+		toServer.writeInt(nonce.length);
+		toServer.write(nonce, 0, nonce.length);
 		toServer.flush();
 	}
 }
