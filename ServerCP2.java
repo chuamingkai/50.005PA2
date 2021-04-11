@@ -70,7 +70,7 @@ public class ServerCP2 {
 					fromClient.readFully(message, 0, numBytes);
 					System.out.println("Received provided message/request for verification");
 
-					byte[] encryptedBytes = RSAEncryptionHelper.serverEncrypt(message, privateKey);
+					byte[] encryptedBytes = RSAEncryptionHelper.encryptMessage(message, privateKey);
 					toClient.writeInt(encryptedBytes.length);
 					toClient.write(encryptedBytes);
 				}

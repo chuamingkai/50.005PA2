@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.PrivateKey;
+import java.util.Base64;
 
 public class ServerCP1 {
 
@@ -49,28 +50,32 @@ public class ServerCP1 {
 				{
 					// If the packet is for transferring a chunk of the file
 					int numBytes = fromClient.readInt();
-					byte[] block = new byte[numBytes];
-					fromClient.readFully(block, 0, numBytes);
+					int numBytesEncrypted = fromClient.readInt();
+					byte[] block = new byte[numBytesEncrypted];
+					fromClient.readFully(block, 0, numBytesEncrypted);
 
-					if (numBytes > 0)
-						bufferedFileOutputStream.write(block, 0, numBytes);
+					if (numBytes > 0) {
+						byte[] data = RSAEncryptionHelper.decryptMessage(block, privateKey);
+						bufferedFileOutputStream.write(data, 0, numBytes);
+					}
 
 					if (numBytes < 117) {
 						if (bufferedFileOutputStream != null) {
 							bufferedFileOutputStream.close();
 							fileOutputStream.close();
+							toClient.writeInt(10); // indicate done with file
 						}
 					}
 				}
 				else if (packetType == 3)
 				{
-					// packet is initial message in verification protocol
+					// initial message in verification protocol
 					int numBytes = fromClient.readInt();
 					byte[] message = new byte[numBytes];
 					fromClient.readFully(message, 0, numBytes);
 					System.out.println("Received provided message/request for verification");
 
-					byte[] encryptedBytes = RSAEncryptionHelper.serverEncrypt(message, privateKey);
+					byte[] encryptedBytes = RSAEncryptionHelper.encryptMessage(message, privateKey);
 					toClient.writeInt(encryptedBytes.length);
 					toClient.write(encryptedBytes);
 				}

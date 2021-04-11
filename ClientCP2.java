@@ -60,7 +60,7 @@ public class ClientCP2 {
 			PublicKey serverKey = serverCert.getPublicKey();
 
 			// decrypt encryptedReturn and check against verificationMessage
-			String decryptedMessage = RSAEncryptionHelper.decryptServerMessage(encryptedReturn, serverKey);
+			String decryptedMessage = new String(RSAEncryptionHelper.decryptMessage(encryptedReturn, serverKey));
 			if (!decryptedMessage.equals(verificationMessage)) {
 				toServer.writeInt(10);
 				toServer.flush();

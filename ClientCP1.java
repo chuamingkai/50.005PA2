@@ -9,6 +9,7 @@ import java.security.PublicKey;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Base64;
 
 public class ClientCP1 {
 	final static String verificationMessage = "Encrypt this message and send it back";
@@ -60,7 +61,7 @@ public class ClientCP1 {
 			PublicKey serverKey = serverCert.getPublicKey();
 
 			// decrypt encryptedReturn and check against verificationMessage
-			String decryptedMessage = RSAEncryptionHelper.decryptServerMessage(encryptedReturn, serverKey);
+			String decryptedMessage = new String(RSAEncryptionHelper.decryptMessage(encryptedReturn, serverKey));
 			if (!decryptedMessage.equals(verificationMessage)) {
 				toServer.writeInt(10);
 				toServer.flush();
@@ -85,14 +86,15 @@ public class ClientCP1 {
 				for (boolean fileEnded = false; !fileEnded;) {
 					numBytes = bufferedFileInputStream.read(fromFileBuffer);
 					fileEnded = numBytes < 117;
-
-					sendFileData(numBytes, fromFileBuffer);
+					byte[] encryptInfo = RSAEncryptionHelper.encryptMessage(fromFileBuffer, serverKey);
+					sendFileData(numBytes, encryptInfo.length, encryptInfo);
 				}
+				fromServer.readInt();
 			}
 			toServer.writeInt(10);
 
-			bufferedFileInputStream.close();
-			fileInputStream.close();
+			if (bufferedFileInputStream != null) bufferedFileInputStream.close();
+			if (fileInputStream != null) fileInputStream.close();
 
 
 			System.out.println("Closing connection...");
@@ -103,10 +105,11 @@ public class ClientCP1 {
 		System.out.println("Program took: " + timeTaken/1000000.0 + "ms to run");
 	}
 
-	static void sendFileData(int numBytes, byte[] fromFileBuffer) throws IOException {
+	static void sendFileData(int numBytes, int numBytesEncrpyted, byte[] fromFileBuffer) throws IOException {
 		toServer.writeInt(1);
 		toServer.writeInt(numBytes);
-		toServer.write(fromFileBuffer, 0, numBytes);
+		toServer.writeInt(numBytesEncrpyted);
+		toServer.write(fromFileBuffer, 0, numBytesEncrpyted);
 		toServer.flush();
 	}
 
