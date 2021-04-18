@@ -17,7 +17,7 @@ On one terminal, use `bash server.sh <protocol>` to run the server code, where `
 On the other terminal, use `bash client.sh <protocol> <args>`  to run the client code. `protocol` is the same as above. `args` is the list of files to be sent.
 
 
-### Checkoff Appendix 1: Preparing code
+## Checkoff Appendix 1: Preparing code
 1. On the client side CP1:
    1. Get server.crt from server: fromServer.readFully(certificate, 0, numBytes); 
       - line 61 -> line 126
