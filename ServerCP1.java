@@ -62,7 +62,7 @@ public class ServerCP1 {
 						if (bufferedFileOutputStream != null) {
 							bufferedFileOutputStream.close();
 							fileOutputStream.close();
-							toClient.writeInt(CommunicationCodeEnum.END_COMM.getCode()); // indicate done with file
+							toClient.writeInt(CommunicationCodeEnum.FILE_DONE.getCode()); // indicate done with file
 						}
 					}
 				}
