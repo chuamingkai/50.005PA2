@@ -1,3 +1,4 @@
+import javax.crypto.SecretKey;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -12,16 +13,17 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.Base64;
+//client generate shared key
 
 public class ClientCP2 {
     static DataOutputStream toServer = null;
     static DataInputStream fromServer = null;
+    final static String verificationMessage = "Encrypt the message and send back";
 
     public static void main(String[] args) throws Exception {
-        SecureRandom secureRandom = new SecureRandom();
-        byte[] nonce = new byte[8];
-        secureRandom.nextBytes(nonce);
         PublicKey CAPublicKey = AuthenticationHelper.getCAPublicKey();
+        SecretKey secretKey = AESEncryptionHelper.generateKey();
 
         String serverAddress = "localhost";
         int port = 4321;
@@ -46,7 +48,7 @@ public class ClientCP2 {
 
             // START AUTHENTICATION
             System.out.println("Sending verification request");
-            sendVerificationMessage(nonce);
+            sendVerificationMessage();
 
             // read encrypted return message
             numBytes = fromServer.readInt();
@@ -65,14 +67,28 @@ public class ClientCP2 {
             PublicKey serverKey = serverCert.getPublicKey();
 
             // decrypt encryptedReturn and check against verificationMessage
-            byte[] decryptedMessage = RSAEncryptionHelper.decryptMessage(encryptedReturn, serverKey);
-            if (!Arrays.equals(decryptedMessage, nonce)) {
+
+            //encryptMessage
+            //use when share the shared key
+            String decryptedMessage = new String(RSAEncryptionHelper.decryptMessage(encryptedReturn, serverKey));
+            if (!decryptedMessage.equals(verificationMessage)) {
                 toServer.writeInt(10);
                 toServer.flush();
                 throw new Exception("Authentication Error");
             }
             // AUTHENTICATION COMPLETE
             System.out.println("Successfully authenticated server!");
+
+            //generate key
+            //send to server, add send shared key in Enom SHARE_KEY
+            // EXCHANGE SECRET KEY
+            System.out.println("Exchanging secret key");
+            toServer.writeInt(5);
+            byte[] encryptedKey = RSAEncryptionHelper.encryptMessage(secretKey.getEncoded(), serverKey);
+            toServer.writeInt(encryptedKey.length);
+            System.out.println("Secret key: " + Base64.getEncoder().encodeToString(secretKey.getEncoded()));
+            toServer.write(encryptedKey, 0, encryptedKey.length);
+
 
             for (int i = 0; i < args.length; i++) {
                 String filename = args[i];
@@ -81,13 +97,8 @@ public class ClientCP2 {
                 sendFileName(filename);
 
                 // Open the file
-                try {
-                    fileInputStream = new FileInputStream(filename);
-                    bufferedFileInputStream = new BufferedInputStream(fileInputStream);
-                } catch (FileNotFoundException ex) {
-                    System.out.println(filename + " not found");
-                    continue;
-                }
+                fileInputStream = new FileInputStream(filename);
+                bufferedFileInputStream = new BufferedInputStream(fileInputStream);
 
                 byte [] fromFileBuffer = new byte[117];
 
@@ -95,8 +106,8 @@ public class ClientCP2 {
                 for (boolean fileEnded = false; !fileEnded;) {
                     numBytes = bufferedFileInputStream.read(fromFileBuffer);
                     fileEnded = numBytes < 117;
-
-                    sendFileData(numBytes, fromFileBuffer);
+                    byte[] encryptInfo = AESEncryptionHelper.encryptMessage(fromFileBuffer, secretKey);
+                    sendFileData(numBytes, encryptInfo.length, encryptInfo);
                 }
                 fromServer.readInt();
             }
@@ -114,7 +125,7 @@ public class ClientCP2 {
         System.out.println("Program took: " + timeTaken/1000000.0 + "ms to run");
     }
 
-    static void sendFileData(int numBytes, byte[] fromFileBuffer) throws IOException {
+    static void sendFileData(int numBytes, int numBytesEncrpyted, byte[] fromFileBuffer) throws IOException {
         toServer.writeInt(1);
         toServer.writeInt(numBytes);
         toServer.write(fromFileBuffer, 0, numBytes);
@@ -135,10 +146,10 @@ public class ClientCP2 {
         toServer.flush();
     }
 
-    static void sendVerificationMessage(byte[] nonce) throws IOException {
+    static void sendVerificationMessage() throws IOException {
         toServer.writeInt(3);
-        toServer.writeInt(nonce.length);
-        toServer.write(nonce, 0, nonce.length);
+        toServer.writeInt(verificationMessage.getBytes().length);
+        toServer.write(verificationMessage.getBytes(), 0, verificationMessage.getBytes().length);
         toServer.flush();
     }
 }

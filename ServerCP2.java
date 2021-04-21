@@ -1,3 +1,4 @@
+import javax.crypto.SecretKey;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -5,11 +6,14 @@ import java.io.FileOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.PrivateKey;
+import java.util.Base64;
 
 public class ServerCP2 {
 
 	public static void main(String[] args) throws Exception {
 		PrivateKey privateKey = AuthenticationHelper.getServerPrivateKey();
+		SecretKey secretKey = null;
+
 
 		int port = 4321;
 
@@ -84,6 +88,17 @@ public class ServerCP2 {
 					toClient.write(cert);
 
 				}
+
+				else if (packetType == 5)
+				{
+					// receive secret key from client
+					int numBytes = fromClient.readInt();
+					byte[] encryptedKey = new byte[numBytes];
+					fromClient.readFully(encryptedKey, 0, numBytes);
+					secretKey = RSAEncryptionHelper.decryptSecretKey(encryptedKey, privateKey);
+					System.out.println("Secret key: " + Base64.getEncoder().encodeToString(secretKey.getEncoded()));
+				}
+
 				else if (packetType == 10)
 				{
 					System.out.println("Closing connection...");
