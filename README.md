@@ -34,7 +34,7 @@ On the other terminal, use `bash client.sh <protocol> <args>`  to run the client
       - line 26
    2. Send symmetric key to server (encrypted with server’s public key): byte[] cipherTextLong = cipherServer.doFinal(last); 
           toServer.write(encryptSymmetricKey);
-      - line 87
+      - line 87 -> line 88
    3. Encrypt file chunk with symmetric key: byte[] cipherTextLong = aesCipher.doFinal(last);
       - line 109
 
@@ -49,6 +49,6 @@ On the other terminal, use `bash client.sh <protocol> <args>`  to run the client
 
 4. On the server side CP2:
    1. Decrypt symmetric key with private key: byte[] aesKeybytesDecryptedKey = rsaCipherDecrypt.doFinal(aesKeybytesEncryptedKey);
-      - line 78
-   2. Decrypt file chunks with symmetric key: decryptedblock = aesCipherDecryptor.doFinal(encryptedblock);
       - line 98
+   2. Decrypt file chunks with symmetric key: decryptedblock = aesCipherDecryptor.doFinal(encryptedblock);
+      - line 61

@@ -53,11 +53,14 @@ public class ServerCP2 {
 				{
 					// If the packet is for transferring a chunk of the file
 					int numBytes = fromClient.readInt();
-					byte[] block = new byte[numBytes];
-					fromClient.readFully(block, 0, numBytes);
+					int numBytesEncrypted = fromClient.readInt();
+					byte[] block = new byte[numBytesEncrypted];
+					fromClient.readFully(block, 0, numBytesEncrypted);
 
-					if (numBytes > 0)
-						bufferedFileOutputStream.write(block, 0, numBytes);
+					if (numBytes > 0) {
+						byte[] data = AESEncryptionHelper.decryptMessage(block, secretKey);
+						bufferedFileOutputStream.write(data, 0, numBytes);
+					}
 
 					if (numBytes < 117) {
 						if (bufferedFileOutputStream != null) {
