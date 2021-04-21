@@ -55,7 +55,7 @@ public class ClientCP2 {
 
             // request certificate
             System.out.println("Requesting certificate");
-            toServer.writeInt(4);
+            toServer.writeInt(CommunicationCodeEnum.REQUEST_CERT.getCode());
             toServer.flush();
             X509Certificate serverCert = getServerCert();
 
@@ -67,7 +67,7 @@ public class ClientCP2 {
             // decrypt encryptedReturn and check against verificationMessage
             byte[] decryptedMessage = RSAEncryptionHelper.decryptMessage(encryptedReturn, serverKey);
             if (!Arrays.equals(decryptedMessage, nonce)) {
-                toServer.writeInt(10);
+                toServer.writeInt(CommunicationCodeEnum.END_COMM.getCode());
                 toServer.flush();
                 throw new Exception("Authentication Error");
             }
@@ -100,7 +100,7 @@ public class ClientCP2 {
                 }
                 fromServer.readInt();
             }
-            toServer.writeInt(10);
+            toServer.writeInt(CommunicationCodeEnum.END_COMM.getCode());
 
             bufferedFileInputStream.close();
             fileInputStream.close();
@@ -115,7 +115,7 @@ public class ClientCP2 {
     }
 
     static void sendFileData(int numBytes, byte[] fromFileBuffer) throws IOException {
-        toServer.writeInt(1);
+        toServer.writeInt(CommunicationCodeEnum.FILE_DATA.getCode());
         toServer.writeInt(numBytes);
         toServer.write(fromFileBuffer, 0, numBytes);
         toServer.flush();
@@ -129,14 +129,14 @@ public class ClientCP2 {
     }
 
     static void sendFileName(String filename) throws IOException {
-        toServer.writeInt(0);
+        toServer.writeInt(CommunicationCodeEnum.FILE_NAME.getCode());
         toServer.writeInt(filename.getBytes().length);
         toServer.write(filename.getBytes(), 0, filename.getBytes().length);
         toServer.flush();
     }
 
     static void sendVerificationMessage(byte[] nonce) throws IOException {
-        toServer.writeInt(3);
+        toServer.writeInt(CommunicationCodeEnum.VERIFY.getCode());
         toServer.writeInt(nonce.length);
         toServer.write(nonce, 0, nonce.length);
         toServer.flush();
