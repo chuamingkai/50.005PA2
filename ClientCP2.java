@@ -6,19 +6,23 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Arrays;
 import java.util.Base64;
 
 import javax.crypto.SecretKey;
 
 public class ClientCP2 {
-    final static String verificationMessage = "Encrypt this message and send it back";
     static DataOutputStream toServer = null;
     static DataInputStream fromServer = null;
 
     public static void main(String[] args) throws Exception {
+        SecureRandom secureRandom = new SecureRandom();
+        byte[] nonce = new byte[8];
+        secureRandom.nextBytes(nonce);
         PublicKey CAPublicKey = AuthenticationHelper.getCAPublicKey();
         SecretKey secretKey = AESEncryptionHelper.generateKey();
 
@@ -45,7 +49,7 @@ public class ClientCP2 {
 
             // START AUTHENTICATION
             System.out.println("Sending verification request");
-            sendVerificationMessage();
+            sendVerificationMessage(nonce);
 
             // read encrypted return message
             numBytes = fromServer.readInt();
@@ -54,7 +58,7 @@ public class ClientCP2 {
 
             // request certificate
             System.out.println("Requesting certificate");
-            toServer.writeInt(4);
+            toServer.writeInt(CommunicationCodeEnum.REQUEST_CERT.getCode());
             toServer.flush();
             X509Certificate serverCert = getServerCert();
 
@@ -64,9 +68,9 @@ public class ClientCP2 {
             PublicKey serverKey = serverCert.getPublicKey();
 
             // decrypt encryptedReturn and check against verificationMessage
-            String decryptedMessage = new String(RSAEncryptionHelper.decryptMessage(encryptedReturn, serverKey));
-            if (!decryptedMessage.equals(verificationMessage)) {
-                toServer.writeInt(10);
+            byte[] decryptedMessage = RSAEncryptionHelper.decryptMessage(encryptedReturn, serverKey);
+            if (!Arrays.equals(decryptedMessage, nonce)) {
+                toServer.writeInt(CommunicationCodeEnum.END_COMM.getCode());
                 toServer.flush();
                 throw new Exception("Authentication Error");
             }
@@ -75,7 +79,7 @@ public class ClientCP2 {
 
             // EXCHANGE SECRET KEY
             System.out.println("Exchanging secret key");
-            toServer.writeInt(5);
+            toServer.writeInt(CommunicationCodeEnum.SHARE_SECRET_KEY.getCode());
             byte[] encryptedKey = RSAEncryptionHelper.encryptMessage(secretKey.getEncoded(), serverKey);
             toServer.writeInt(encryptedKey.length);
             System.out.println("Secret key: " + Base64.getEncoder().encodeToString(secretKey.getEncoded()));
@@ -103,7 +107,7 @@ public class ClientCP2 {
                 }
                 fromServer.readInt();
             }
-            toServer.writeInt(10);
+            toServer.writeInt(CommunicationCodeEnum.END_COMM.getCode());
 
             bufferedFileInputStream.close();
             fileInputStream.close();
@@ -118,7 +122,7 @@ public class ClientCP2 {
     }
 
     static void sendFileData(int numBytes, int numBytesEncrpyted, byte[] fromFileBuffer) throws IOException {
-        toServer.writeInt(1);
+        toServer.writeInt(CommunicationCodeEnum.FILE_DATA.getCode());
         toServer.writeInt(numBytes);
         toServer.writeInt(numBytesEncrpyted);
         toServer.write(fromFileBuffer, 0, numBytesEncrpyted);
@@ -133,16 +137,16 @@ public class ClientCP2 {
     }
 
     static void sendFileName(String filename) throws IOException {
-        toServer.writeInt(0);
+        toServer.writeInt(CommunicationCodeEnum.FILE_NAME.getCode());
         toServer.writeInt(filename.getBytes().length);
         toServer.write(filename.getBytes(), 0, filename.getBytes().length);
         toServer.flush();
     }
 
-    static void sendVerificationMessage() throws IOException {
-        toServer.writeInt(3);
-        toServer.writeInt(verificationMessage.getBytes().length);
-        toServer.write(verificationMessage.getBytes(), 0, verificationMessage.getBytes().length);
+    static void sendVerificationMessage(byte[] nonce) throws IOException {
+        toServer.writeInt(CommunicationCodeEnum.VERIFY.getCode());
+        toServer.writeInt(nonce.length);
+        toServer.write(nonce, 0, nonce.length);
         toServer.flush();
     }
 }

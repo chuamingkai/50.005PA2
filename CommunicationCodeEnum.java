@@ -3,6 +3,7 @@ public enum CommunicationCodeEnum {
     FILE_DATA(1),
     VERIFY(3),
     REQUEST_CERT(4),
+    SHARE_SECRET_KEY(5),
     END_COMM(10),
     FILE_DONE(11);
 

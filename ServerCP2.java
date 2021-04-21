@@ -35,7 +35,7 @@ public class ServerCP2 {
 
 				int packetType = fromClient.readInt();
 
-				if (packetType == 0)
+				if (packetType == CommunicationCodeEnum.FILE_NAME.getCode())
 				{
 					// If the packet is for transferring the filename
 					System.out.print("Receiving file ");
@@ -49,7 +49,7 @@ public class ServerCP2 {
 					fileOutputStream = new FileOutputStream("recv_" + new String(filename, 0, numBytes));
 					bufferedFileOutputStream = new BufferedOutputStream(fileOutputStream);
 				}
-				else if (packetType == 1)
+				else if (packetType == CommunicationCodeEnum.FILE_DATA.getCode())
 				{
 					// If the packet is for transferring a chunk of the file
 					int numBytes = fromClient.readInt();
@@ -70,7 +70,7 @@ public class ServerCP2 {
 						}
 					}
 				}
-				else if (packetType == 3)
+				else if (packetType == CommunicationCodeEnum.VERIFY.getCode())
 				{
 					// packet is initial message in verification protocol
 					int numBytes = fromClient.readInt();
@@ -82,7 +82,7 @@ public class ServerCP2 {
 					toClient.writeInt(encryptedBytes.length);
 					toClient.write(encryptedBytes);
 				}
-				else if (packetType == 4)
+				else if (packetType == CommunicationCodeEnum.REQUEST_CERT.getCode())
 				{
 					// send certificate over
 					System.out.println("Sending certificate");
@@ -92,7 +92,7 @@ public class ServerCP2 {
 
 				}
 
-				else if (packetType == 5)
+				else if (packetType == CommunicationCodeEnum.SHARE_SECRET_KEY.getCode())
 				{
 					// receive secret key from client
 					int numBytes = fromClient.readInt();
@@ -102,7 +102,7 @@ public class ServerCP2 {
 					System.out.println("Secret key: " + Base64.getEncoder().encodeToString(secretKey.getEncoded()));
 				}
 
-				else if (packetType == 10)
+				else if (packetType == CommunicationCodeEnum.END_COMM.getCode())
 				{
 					System.out.println("Closing connection...");
 
