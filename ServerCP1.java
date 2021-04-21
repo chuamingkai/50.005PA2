@@ -5,7 +5,6 @@ import java.io.FileOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.PrivateKey;
-import java.util.Base64;
 
 public class ServerCP1 {
 
@@ -32,7 +31,7 @@ public class ServerCP1 {
 
 				int packetType = fromClient.readInt();
 
-				if (packetType == 0)
+				if (packetType == CommunicationCodeEnum.FILE_NAME.getCode())
 				{
 					// If the packet is for transferring the filename
 					System.out.print("Receiving file ");
@@ -46,7 +45,7 @@ public class ServerCP1 {
 					fileOutputStream = new FileOutputStream("recv_" + new String(filename, 0, numBytes));
 					bufferedFileOutputStream = new BufferedOutputStream(fileOutputStream);
 				}
-				else if (packetType == 1)
+				else if (packetType == CommunicationCodeEnum.FILE_DATA.getCode())
 				{
 					// If the packet is for transferring a chunk of the file
 					int numBytes = fromClient.readInt();
@@ -63,11 +62,11 @@ public class ServerCP1 {
 						if (bufferedFileOutputStream != null) {
 							bufferedFileOutputStream.close();
 							fileOutputStream.close();
-							toClient.writeInt(10); // indicate done with file
+							toClient.writeInt(CommunicationCodeEnum.END_COMM.getCode()); // indicate done with file
 						}
 					}
 				}
-				else if (packetType == 3)
+				else if (packetType == CommunicationCodeEnum.VERIFY.getCode())
 				{
 					// initial message in verification protocol
 					int numBytes = fromClient.readInt();
@@ -79,7 +78,7 @@ public class ServerCP1 {
 					toClient.writeInt(encryptedBytes.length);
 					toClient.write(encryptedBytes);
 				}
-				else if (packetType == 4)
+				else if (packetType == CommunicationCodeEnum.REQUEST_CERT.getCode())
 				{
 					// send certificate over
 					System.out.println("Sending certificate");
@@ -88,7 +87,7 @@ public class ServerCP1 {
 					toClient.write(cert);
 
 				}
-				else if (packetType == 10)
+				else if (packetType == CommunicationCodeEnum.END_COMM.getCode())
 				{
 					System.out.println("Closing connection...");
 

@@ -12,7 +12,6 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
-import java.util.Base64;
 
 public class ClientCP1 {
 	static DataOutputStream toServer = null;
@@ -56,7 +55,7 @@ public class ClientCP1 {
 
 			// request certificate
 			System.out.println("Requesting certificate");
-			toServer.writeInt(4);
+			toServer.writeInt(CommunicationCodeEnum.REQUEST_CERT.getCode());
 			toServer.flush();
 			X509Certificate serverCert = getServerCert();
 
@@ -68,7 +67,7 @@ public class ClientCP1 {
 			// decrypt encryptedReturn and check against verificationMessage
 			byte[] decryptedMessage = RSAEncryptionHelper.decryptMessage(encryptedReturn, serverKey);
 			if (!Arrays.equals(decryptedMessage, nonce)) {
-				toServer.writeInt(10);
+				toServer.writeInt(CommunicationCodeEnum.END_COMM.getCode());
 				toServer.flush();
 				throw new Exception("Authentication Error");
 			}
@@ -101,7 +100,7 @@ public class ClientCP1 {
 				}
 				fromServer.readInt();
 			}
-			toServer.writeInt(10);
+			toServer.writeInt(CommunicationCodeEnum.END_COMM.getCode());
 
 			if (bufferedFileInputStream != null) bufferedFileInputStream.close();
 			if (fileInputStream != null) fileInputStream.close();
@@ -116,7 +115,7 @@ public class ClientCP1 {
 	}
 
 	static void sendFileData(int numBytes, int numBytesEncrpyted, byte[] fromFileBuffer) throws IOException {
-		toServer.writeInt(1);
+		toServer.writeInt(CommunicationCodeEnum.FILE_DATA.getCode());
 		toServer.writeInt(numBytes);
 		toServer.writeInt(numBytesEncrpyted);
 		toServer.write(fromFileBuffer, 0, numBytesEncrpyted);
@@ -131,14 +130,14 @@ public class ClientCP1 {
 	}
 
 	static void sendFileName(String filename) throws IOException {
-		toServer.writeInt(0);
+		toServer.writeInt(CommunicationCodeEnum.FILE_NAME.getCode());
 		toServer.writeInt(filename.getBytes().length);
 		toServer.write(filename.getBytes(), 0, filename.getBytes().length);
 		toServer.flush();
 	}
 
 	static void sendVerificationMessage(byte[] nonce) throws IOException {
-		toServer.writeInt(3);
+		toServer.writeInt(CommunicationCodeEnum.VERIFY.getCode());
 		toServer.writeInt(nonce.length);
 		toServer.write(nonce, 0, nonce.length);
 		toServer.flush();
