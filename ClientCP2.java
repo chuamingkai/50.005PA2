@@ -1,25 +1,22 @@
-import javax.crypto.SecretKey;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.Socket;
 import java.security.PublicKey;
-import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
 import java.util.Base64;
-//client generate shared key
+
+import javax.crypto.SecretKey;
 
 public class ClientCP2 {
+    final static String verificationMessage = "Encrypt this message and send it back";
     static DataOutputStream toServer = null;
     static DataInputStream fromServer = null;
-    final static String verificationMessage = "Encrypt the message and send back";
 
     public static void main(String[] args) throws Exception {
         PublicKey CAPublicKey = AuthenticationHelper.getCAPublicKey();
@@ -67,9 +64,6 @@ public class ClientCP2 {
             PublicKey serverKey = serverCert.getPublicKey();
 
             // decrypt encryptedReturn and check against verificationMessage
-
-            //encryptMessage
-            //use when share the shared key
             String decryptedMessage = new String(RSAEncryptionHelper.decryptMessage(encryptedReturn, serverKey));
             if (!decryptedMessage.equals(verificationMessage)) {
                 toServer.writeInt(10);
@@ -79,8 +73,6 @@ public class ClientCP2 {
             // AUTHENTICATION COMPLETE
             System.out.println("Successfully authenticated server!");
 
-            //generate key
-            //send to server, add send shared key in Enom SHARE_KEY
             // EXCHANGE SECRET KEY
             System.out.println("Exchanging secret key");
             toServer.writeInt(5);
@@ -88,7 +80,7 @@ public class ClientCP2 {
             toServer.writeInt(encryptedKey.length);
             System.out.println("Secret key: " + Base64.getEncoder().encodeToString(secretKey.getEncoded()));
             toServer.write(encryptedKey, 0, encryptedKey.length);
-
+            // FINISH EXCHANGE SECRET KEY
 
             for (int i = 0; i < args.length; i++) {
                 String filename = args[i];
@@ -128,7 +120,8 @@ public class ClientCP2 {
     static void sendFileData(int numBytes, int numBytesEncrpyted, byte[] fromFileBuffer) throws IOException {
         toServer.writeInt(1);
         toServer.writeInt(numBytes);
-        toServer.write(fromFileBuffer, 0, numBytes);
+        toServer.writeInt(numBytesEncrpyted);
+        toServer.write(fromFileBuffer, 0, numBytesEncrpyted);
         toServer.flush();
     }
 

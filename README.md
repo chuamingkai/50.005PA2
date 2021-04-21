@@ -31,12 +31,12 @@ On the other terminal, use `bash client.sh <protocol> <args>`  to run the client
 
 2. On the client side CP2:
    1. Generate symmetric key: KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-      - line 26
+      - line 23
    2. Send symmetric key to server (encrypted with server’s public key): byte[] cipherTextLong = cipherServer.doFinal(last); 
           toServer.write(encryptSymmetricKey);
-      - line 87 -> line 88
+      - line 79-80
    3. Encrypt file chunk with symmetric key: byte[] cipherTextLong = aesCipher.doFinal(last);
-      - line 109
+      - line 101
 
 
 3. On the server side CP1:
@@ -49,6 +49,6 @@ On the other terminal, use `bash client.sh <protocol> <args>`  to run the client
 
 4. On the server side CP2:
    1. Decrypt symmetric key with private key: byte[] aesKeybytesDecryptedKey = rsaCipherDecrypt.doFinal(aesKeybytesEncryptedKey);
-      - line 98
+      - line 101
    2. Decrypt file chunks with symmetric key: decryptedblock = aesCipherDecryptor.doFinal(encryptedblock);
       - line 61
